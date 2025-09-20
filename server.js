@@ -1,33 +1,41 @@
-// server.js
-const express = require('express');
-const cors = require('cors');
+const express = require("express");
+const cors = require("cors");
+const crypto = require("crypto");
 
 const app = express();
-app.use(cors()); // разрешаем запросы из браузера (можно ограничить по origin)
+app.use(cors());
 app.use(express.json());
 
-// WHITELIST можно задать через переменную окружения WHITELIST="2030246487,11111111"
-const raw = process.env.WHITELIST || '2030246487';
-const whitelist = new Set(String(raw).split(',').map(s => s.trim()).filter(Boolean));
+const BOT_TOKEN = process.env.BOT_TOKEN; // токен бота из Render переменных
+const WHITELIST = (process.env.WHITELIST || "2030246487").split(",");
 
-app.post('/check', (req, res) => {
-  const { id } = req.body;
-  if (!id) return res.status(400).json({ error: 'no id provided' });
-  const allowed = whitelist.has(String(id));
-  res.json({ allowed });
+// проверка подписи от Telegram
+function checkTelegramAuth(data) {
+  const { hash, ...rest } = data;
+  const secret = crypto.createHash("sha256").update(BOT_TOKEN).digest();
+  const checkString = Object.keys(rest)
+    .sort()
+    .map((k) => `${k}=${rest[k]}`)
+    .join("\n");
+
+  const hmac = crypto.createHmac("sha256", secret).update(checkString).digest("hex");
+  return hmac === hash;
+}
+
+// эндпоинт проверки
+app.post("/auth", (req, res) => {
+  const data = req.body;
+  if (!data.hash) return res.status(400).json({ error: "no hash" });
+
+  if (!checkTelegramAuth(data)) {
+    return res.json({ allowed: false, reason: "invalid signature" });
+  }
+
+  const allowed = WHITELIST.includes(String(data.id));
+  res.json({ allowed, user: data });
 });
 
-// Админ API: добавить ID (необязательно). Защити ADMIN_SECRET в env если будешь включать.
-app.post('/admin/add', (req, res) => {
-  const secret = process.env.ADMIN_SECRET || '';
-  if (secret && req.headers['x-admin-secret'] !== secret) return res.status(403).json({ error: 'forbidden' });
-  const { id } = req.body;
-  if (!id) return res.status(400).json({ error: 'no id' });
-  whitelist.add(String(id));
-  return res.json({ added: id });
-});
-
-app.get('/', (req, res) => res.send('whitelist API is running'));
+app.get("/", (req, res) => res.send("Telegram Auth API is running"));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log('Server listening on', PORT));
+app.listen(PORT, () => console.log("Server listening on " + PORT));
