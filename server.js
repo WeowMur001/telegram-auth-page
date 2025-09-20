@@ -38,4 +38,9 @@ app.post("/auth", (req, res) => {
 app.get("/", (req, res) => res.send("Telegram Auth API is running"));
 
 const PORT = process.env.PORT || 3000;
+const path = require("path");
+
+// отдаём login.html из папки public
+app.use(express.static(path.join(__dirname, "public")));
 app.listen(PORT, () => console.log("Server listening on " + PORT));
+
