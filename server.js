@@ -1,27 +1,22 @@
 const express = require("express");
 const cors = require("cors");
 const crypto = require("crypto");
+const path = require("path");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
 
-// Ваш BOT_TOKEN должен быть установлен как переменная окружения на Render
-// const BOT_TOKEN = process.env.BOT_TOKEN; 
-// Для локального тестирования:
-const BOT_TOKEN = "8494310534:AAFL9cs4ZFbrHJJufib0ywzZcSWvXTTb2cg";
+const BOT_TOKEN = process.env.BOT_TOKEN;
+const WHITELIST_RAW = process.env.WHITELIST || "";
+const WHITELIST = WHITELIST_RAW.split(",").map(id => id.trim());
 
-// WHITELIST должен быть установлен как переменная окружения
-// const WHITELIST = (process.env.WHITELIST || "").split(",");
-// Для локального тестирования:
-const WHITELIST = ["2030246487"]; // Ваш ID по умолчанию
-
-// Проверка подписи от Telegram
 function checkTelegramAuth(data) {
     const { hash, ...rest } = data;
     const secret = crypto.createHash("sha256").update(BOT_TOKEN).digest();
     const checkString = Object.keys(rest)
-        .filter(k => k !== 'hash' && k !== 'auth_date') // Исключаем hash и auth_date
+        .filter(k => k !== 'hash')
         .sort()
         .map((k) => `${k}=${rest[k]}`)
         .join("\n");
@@ -29,7 +24,6 @@ function checkTelegramAuth(data) {
     return hmac === hash;
 }
 
-// API для проверки
 app.post("/auth", (req, res) => {
     const data = req.body;
     if (!data.hash) {
@@ -44,14 +38,9 @@ app.post("/auth", (req, res) => {
     res.json({ allowed, user: data });
 });
 
-// Страница логина (убедитесь, что эта страница соответствует вашей public/login.html)
 app.get("/login", (req, res) => {
-  res.sendFile(__dirname + "/public/login.html");
+    res.sendFile(path.join(__dirname, "public", "login.html"));
 });
-
-// Главная страница
-app.get("/", (req, res) => res.send("Telegram Auth API is running"));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("Server listening on " + PORT));
-
