@@ -8,10 +8,10 @@
   <div style="text-align:center">
     <h2>Вход через Telegram</h2>
     <div id="widget"></div>
-    <div id="msg" style="margin-top:12px;font-size:14px;color:#f88"></div>
+    <div id="msg" style="margin-top:12px;color:#f88"></div>
   </div>
 
-  <!-- Telegram Login Widget -->
+  <!-- ВАЖНО: здесь имя твоего бота -->
   <script src="https://telegram.org/js/telegram-widget.js?22"
     data-telegram-login="AibmCheck_bot"
     data-size="large"
@@ -21,38 +21,26 @@
 
   <script>
     async function onTelegramAuth(user) {
-      const msg = document.getElementById("msg");
-      msg.style.color = "#fff";
-      msg.innerText = "⏳ Проверка доступа...";
-
       try {
-        const r = await fetch("/auth", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        const r = await fetch('/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(user)
         });
         const data = await r.json();
+        // передаём результат в userscript
+        try {
+          window.parent.postMessage({ type: 'telegram-auth', result: data }, '*');
+        } catch(e){}
 
         if (data.allowed) {
-          msg.style.color = "#8ef08e";
-          msg.innerText = "✅ Доступ разрешён. Перенаправление...";
-
-          // сохраняем флаг
-          localStorage.setItem("__aibm_auth_ok", "1");
-
-          // возвращаемся в игру
-          const back = sessionStorage.getItem("__aibm_return_url")
-                   || localStorage.getItem("__aibm_return_url")
-                   || "https://moomoo.io";
-
-          setTimeout(() => { window.location.href = back; }, 1200);
+          document.getElementById('msg').style.color = '#8ef08e';
+          document.getElementById('msg').innerText = '✅ Доступ разрешён';
         } else {
-          msg.style.color = "#f88";
-          msg.innerText = "⛔ Доступ запрещён";
+          document.getElementById('msg').innerText = '⛔ Доступ запрещён';
         }
       } catch (err) {
-        msg.style.color = "#f88";
-        msg.innerText = "Ошибка соединения с сервером";
+        document.getElementById('msg').innerText = 'Ошибка проверки';
       }
     }
   </script>
