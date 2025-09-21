@@ -3,15 +3,17 @@
 <head>
   <meta charset="utf-8"/>
   <title>Telegram Login</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
 </head>
-<body style="display:flex;align-items:center;justify-content:center;height:100vh;background:#111;color:#fff;">
-  <div style="text-align:center">
-    <h2>Вход через Telegram</h2>
-    <div id="widget"></div>
-    <div id="msg" style="margin-top:12px;color:#f88"></div>
+<body style="display:flex;align-items:center;justify-content:center;height:100vh;background:#111;color:#fff;margin:0;">
+  <div style="text-align:center;max-width:420px;padding:18px;">
+    <h2 style="margin-bottom:8px">Вход через Telegram</h2>
+    <div id="widget" style="margin:18px 0;"></div>
+    <div id="msg" style="margin-top:12px;font-size:14px;color:#f88"></div>
+    <div id="hint" style="margin-top:10px;font-size:13px;color:#ccc"></div>
   </div>
 
-  <!-- ВАЖНО: здесь имя твоего бота -->
+  <!-- Telegram Login Widget -->
   <script src="https://telegram.org/js/telegram-widget.js?22"
     data-telegram-login="AibmCheck_bot"
     data-size="large"
@@ -20,27 +22,72 @@
   </script>
 
   <script>
+    // Функция, которую вызовет Telegram widget с user объектом
     async function onTelegramAuth(user) {
+      const msg = document.getElementById('msg');
+      const hint = document.getElementById('hint');
+      msg.style.color = '#fff';
+      msg.textContent = '⏳ Проверка доступа...';
+      hint.textContent = '';
+
       try {
+        // отправляем на сервер для проверки подписи и whitelist
         const r = await fetch('/auth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(user)
         });
         const data = await r.json();
-        // передаём результат в userscript
-        try {
-          window.parent.postMessage({ type: 'telegram-auth', result: data }, '*');
-        } catch(e){}
 
-        if (data.allowed) {
-          document.getElementById('msg').style.color = '#8ef08e';
-          document.getElementById('msg').innerText = '✅ Доступ разрешён';
+        // Попробуем отправить результат в opener (если был открыт как popup)
+        let posted = false;
+        try {
+          if (window.opener && !window.opener.closed) {
+            window.opener.postMessage({ type: 'telegram-auth', result: data }, '*');
+            posted = true;
+          }
+        } catch(e){ /* ignore */ }
+
+        // Если iframe - отправим в parent
+        try {
+          if (!posted && window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'telegram-auth', result: data }, '*');
+            posted = true;
+          }
+        } catch(e){ /* ignore */ }
+
+        // Показать статус на странице
+        if (data && data.allowed) {
+          msg.style.color = '#8ef08e';
+          msg.textContent = '✅ Доступ разрешён';
+          hint.textContent = 'Если вы были перенаправлены из игры — она продолжит загрузку автоматически.';
         } else {
-          document.getElementById('msg').innerText = '⛔ Доступ запрещён';
+          msg.style.color = '#f88';
+          msg.textContent = '⛔ Доступ запрещён';
         }
+
+        // Если не было opener/parent (пользователь открыл /login напрямую),
+        // делаем редирект обратно на сохранённый return_url (если есть) либо на moomoo
+        if (!posted) {
+          // пытаемся взять URL возврата из сессии, или из параметра, либо по умолчанию
+          const back = sessionStorage.getItem('__aibm_return_url')
+                     || localStorage.getItem('__aibm_return_url')
+                     || (new URLSearchParams(location.search).get('back')) 
+                     || 'https://moomoo.io';
+          // добавим идентификатор в якорь, чтобы userscript на moomoo заметил (fallback)
+          const target = back + (back.includes('#') ? '&' : '#') + 'aibm_auth=1';
+          setTimeout(() => { location.href = target; }, 800);
+        }
+
       } catch (err) {
-        document.getElementById('msg').innerText = 'Ошибка проверки';
+        console.error('auth error', err);
+        msg.style.color = '#f88';
+        msg.textContent = 'Ошибка соединения с сервером';
+        // также уведомим opener/parent если возможно
+        try { 
+          if (window.opener && !window.opener.closed) window.opener.postMessage({ type:'telegram-auth', result:{ allowed:false, error:'network' } }, '*');
+          else if (window.parent && window.parent !== window) window.parent.postMessage({ type:'telegram-auth', result:{ allowed:false, error:'network' } }, '*');
+        } catch(e){}
       }
     }
   </script>
