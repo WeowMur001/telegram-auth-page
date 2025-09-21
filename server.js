@@ -28,11 +28,18 @@ app.post("/auth", (req, res) => {
   if (!data.hash) return res.status(400).json({ error: "no hash" });
 
   if (!checkTelegramAuth(data)) {
-    return res.json({ allowed: false, reason: "invalid signature" });
+    // Если подпись неверна, отправляем на страницу с ошибкой
+    return res.redirect('https://moomoo.io?auth=fail');
   }
 
   const allowed = WHITELIST.includes(String(data.id));
-  res.json({ allowed, user: data });
+
+  // Перенаправляем на Moomoo.io с параметром успеха или неудачи
+  if (allowed) {
+    res.redirect('https://moomoo.io/?auth=success');
+  } else {
+    res.redirect('https://moomoo.io/?auth=fail');
+  }
 });
 
 // Страница логина
@@ -95,4 +102,5 @@ app.get("/", (req, res) => res.send("Telegram Auth API is running"));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("Server listening on " + PORT));
+
 
