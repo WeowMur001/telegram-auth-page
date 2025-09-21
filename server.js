@@ -35,7 +35,42 @@ app.post("/auth", (req, res) => {
     }
 
     const allowed = WHITELIST.includes(String(data.id));
-    res.json({ allowed, user: data });
+
+    // Возвращаем HTML-страницу с результатом и JavaScript для перенаправления
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Redirecting...</title>
+            <style>
+                body { background-color: #1a1a1a; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+                .message { text-align: center; padding: 20px; border-radius: 8px; }
+            </style>
+        </head>
+        <body>
+            <div class="message">
+                <h2>${allowed ? '✅ Проверка пройдена!' : '⛔ Доступ запрещён'}</h2>
+                <p>Перенаправление на страницу игры...</p>
+            </div>
+            <script>
+                // Убедимся, что window.opener существует и не закрыто
+                if (window.opener) {
+                    // Отправляем сообщение обратно в родительскую вкладку
+                    window.opener.postMessage({
+                        type: 'telegram-auth',
+                        result: { allowed: ${allowed} }
+                    }, '*');
+                    
+                    // Закрываем текущую вкладку
+                    window.close();
+                } else {
+                    // Если вкладка-родитель не найдена, делаем редирект
+                    window.location.href = 'https://moomoo.io?auth=${allowed ? 'success' : 'fail'}';
+                }
+            </script>
+        </body>
+        </html>
+    `);
 });
 
 app.get("/login", (req, res) => {
@@ -44,3 +79,4 @@ app.get("/login", (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("Server listening on " + PORT));
+
