@@ -4,13 +4,25 @@
   <meta charset="utf-8"/>
   <title>Telegram Login</title>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <style>
+    body {
+      display:flex;align-items:center;justify-content:center;
+      height:100vh;background:#111;color:#fff;margin:0;
+      font-family:Arial, sans-serif;
+    }
+    #box { text-align:center;max-width:420px;padding:18px; }
+    h2 { margin-bottom:8px; }
+    #widget { margin:18px 0; }
+    #msg { margin-top:12px;font-size:14px;color:#f88; }
+    #hint { margin-top:10px;font-size:13px;color:#ccc; }
+  </style>
 </head>
-<body style="display:flex;align-items:center;justify-content:center;height:100vh;background:#111;color:#fff;margin:0;">
-  <div style="text-align:center;max-width:420px;padding:18px;">
-    <h2 style="margin-bottom:8px">Вход через Telegram</h2>
-    <div id="widget" style="margin:18px 0;"></div>
-    <div id="msg" style="margin-top:12px;font-size:14px;color:#f88"></div>
-    <div id="hint" style="margin-top:10px;font-size:13px;color:#ccc"></div>
+<body>
+  <div id="box">
+    <h2>Вход через Telegram</h2>
+    <div id="widget"></div>
+    <div id="msg"></div>
+    <div id="hint"></div>
   </div>
 
   <!-- Telegram Login Widget -->
@@ -22,7 +34,6 @@
   </script>
 
   <script>
-    // Функция, которую вызовет Telegram widget с user объектом
     async function onTelegramAuth(user) {
       const msg = document.getElementById('msg');
       const hint = document.getElementById('hint');
@@ -39,54 +50,41 @@
         });
         const data = await r.json();
 
-        // Попробуем отправить результат в opener (если был открыт как popup)
-        let posted = false;
+        // всегда пробуем отослать в parent (для iframe overlay)
+        try {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'telegram-auth', result: data }, '*');
+          }
+        } catch(e){}
+
+        // также в opener (если вдруг открыли в popup)
         try {
           if (window.opener && !window.opener.closed) {
             window.opener.postMessage({ type: 'telegram-auth', result: data }, '*');
-            posted = true;
           }
-        } catch(e){ /* ignore */ }
+        } catch(e){}
 
-        // Если iframe - отправим в parent
-        try {
-          if (!posted && window.parent && window.parent !== window) {
-            window.parent.postMessage({ type: 'telegram-auth', result: data }, '*');
-            posted = true;
-          }
-        } catch(e){ /* ignore */ }
-
-        // Показать статус на странице
         if (data && data.allowed) {
           msg.style.color = '#8ef08e';
           msg.textContent = '✅ Доступ разрешён';
-          hint.textContent = 'Если вы были перенаправлены из игры — она продолжит загрузку автоматически.';
+          hint.textContent = 'Можно вернуться к игре.';
         } else {
           msg.style.color = '#f88';
           msg.textContent = '⛔ Доступ запрещён';
-        }
-
-        // Если не было opener/parent (пользователь открыл /login напрямую),
-        // делаем редирект обратно на сохранённый return_url (если есть) либо на moomoo
-        if (!posted) {
-          // пытаемся взять URL возврата из сессии, или из параметра, либо по умолчанию
-          const back = sessionStorage.getItem('__aibm_return_url')
-                     || localStorage.getItem('__aibm_return_url')
-                     || (new URLSearchParams(location.search).get('back')) 
-                     || 'https://moomoo.io';
-          // добавим идентификатор в якорь, чтобы userscript на moomoo заметил (fallback)
-          const target = back + (back.includes('#') ? '&' : '#') + 'aibm_auth=1';
-          setTimeout(() => { location.href = target; }, 800);
         }
 
       } catch (err) {
         console.error('auth error', err);
         msg.style.color = '#f88';
         msg.textContent = 'Ошибка соединения с сервером';
-        // также уведомим opener/parent если возможно
-        try { 
-          if (window.opener && !window.opener.closed) window.opener.postMessage({ type:'telegram-auth', result:{ allowed:false, error:'network' } }, '*');
-          else if (window.parent && window.parent !== window) window.parent.postMessage({ type:'telegram-auth', result:{ allowed:false, error:'network' } }, '*');
+
+        // уведомим родителя об ошибке
+        try {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type:'telegram-auth', result:{ allowed:false, error:'network' } }, '*');
+          } else if (window.opener && !window.opener.closed) {
+            window.opener.postMessage({ type:'telegram-auth', result:{ allowed:false, error:'network' } }, '*');
+          }
         } catch(e){}
       }
     }
