@@ -19,30 +19,31 @@
   </script>
 
   <script>
-    async function onTelegramAuth(user) {
+  async function onTelegramAuth(user) {
+    try {
+      const r = await fetch('/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(user)
+      });
+      const data = await r.json();
+      // ✅ отправляем результат в родительский iframe
       try {
-        const r = await fetch('/auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(user)
-        });
-        const data = await r.json();
-        // отправляем результат обратно в userscript
-        try {
-          window.opener.postMessage({ type: 'telegram-auth', result: data }, '*');
-        } catch(e){}
-        if (data.allowed) {
-          document.getElementById('msg').style.color = '#8ef08e';
-          document.getElementById('msg').innerText = '✅ Доступ разрешён. Окно закроется...';
-        } else {
-          document.getElementById('msg').innerText = '⛔ Доступ запрещён.';
-        }
-      } catch (err) {
-        document.getElementById('msg').innerText = 'Ошибка проверки. Попробуйте ещё раз.';
-        try { window.opener.postMessage({ type:'telegram-auth', result: { allowed:false, error:'network' } }, '*'); } catch(e){}
+        window.parent.postMessage({ type: 'telegram-auth', result: data }, '*');
+      } catch(e){}
+      if (data.allowed) {
+        document.getElementById('msg').style.color = '#8ef08e';
+        document.getElementById('msg').innerText = '✅ Доступ разрешён';
+      } else {
+        document.getElementById('msg').innerText = '⛔ Доступ запрещён';
       }
-      setTimeout(() => window.close(), 1500);
+    } catch (err) {
+      document.getElementById('msg').innerText = 'Ошибка проверки';
+      try {
+        window.parent.postMessage({ type:'telegram-auth', result: { allowed:false, error:'network' } }, '*');
+      } catch(e){}
     }
-  </script>
+  }
+</script>
 </body>
 </html>
