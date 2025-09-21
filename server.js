@@ -6,14 +6,12 @@ const path = require("path");
 const app = express();
 app.use(cors());
 app.use(express.json());
-// Убедитесь, что папка 'public' существует и содержит login.html
 app.use(express.static(path.join(__dirname, "public")));
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const WHITELIST_RAW = process.env.WHITELIST || "";
 const WHITELIST = WHITELIST_RAW.split(",").map(id => id.trim());
 
-// Функция для проверки подписи Telegram
 function checkTelegramAuth(data) {
     const { hash, ...rest } = data;
     const secret = crypto.createHash("sha256").update(BOT_TOKEN).digest();
@@ -26,11 +24,10 @@ function checkTelegramAuth(data) {
     return hmac === hash;
 }
 
-// API для проверки
 app.post("/auth", (req, res) => {
     const data = req.body;
     if (!data.hash) {
-        return res.json({ allowed: false, error: "no hash" });
+        return res.status(400).json({ allowed: false, error: "no hash" });
     }
 
     if (!checkTelegramAuth(data)) {
@@ -41,9 +38,8 @@ app.post("/auth", (req, res) => {
     res.json({ allowed, user: data });
 });
 
-// Главная страница
-app.get("/", (req, res) => {
-    res.send("Telegram Auth API is running. Go to /login to test.");
+app.get("/login", (req, res) => {
+    res.sendFile(path.join(__dirname, "public", "login.html"));
 });
 
 const PORT = process.env.PORT || 3000;
