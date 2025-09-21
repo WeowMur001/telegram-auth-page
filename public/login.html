@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>Telegram login</title>
+  <title>Telegram Login</title>
 </head>
 <body style="display:flex;align-items:center;justify-content:center;height:100vh;background:#111;color:#fff;">
   <div style="text-align:center">
@@ -11,6 +11,7 @@
     <div id="msg" style="margin-top:12px;color:#f88"></div>
   </div>
 
+  <!-- ВАЖНО: здесь имя твоего бота -->
   <script src="https://telegram.org/js/telegram-widget.js?22"
     data-telegram-login="AibmCheck_bot"
     data-size="large"
@@ -27,21 +28,20 @@
           body: JSON.stringify(user)
         });
         const data = await r.json();
-        // отправляем результат обратно в userscript
+        // передаём результат в userscript
         try {
-          window.opener.postMessage({ type: 'telegram-auth', result: data }, '*');
+          window.parent.postMessage({ type: 'telegram-auth', result: data }, '*');
         } catch(e){}
+
         if (data.allowed) {
           document.getElementById('msg').style.color = '#8ef08e';
-          document.getElementById('msg').innerText = '✅ Доступ разрешён. Окно закроется...';
+          document.getElementById('msg').innerText = '✅ Доступ разрешён';
         } else {
-          document.getElementById('msg').innerText = '⛔ Доступ запрещён.';
+          document.getElementById('msg').innerText = '⛔ Доступ запрещён';
         }
       } catch (err) {
-        document.getElementById('msg').innerText = 'Ошибка проверки. Попробуйте ещё раз.';
-        try { window.opener.postMessage({ type:'telegram-auth', result: { allowed:false, error:'network' } }, '*'); } catch(e){}
+        document.getElementById('msg').innerText = 'Ошибка проверки';
       }
-      setTimeout(() => window.close(), 1500);
     }
   </script>
 </body>
