@@ -59,30 +59,32 @@ app.get("/login", (req, res) => {
       </script>
 
       <script>
-        async function onTelegramAuth(user) {
-          try {
-            const r = await fetch('/auth', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(user)
-            });
-            const data = await r.json();
-            try {
-              window.opener.postMessage({ type: 'telegram-auth', result: data }, '*');
-            } catch(e){}
-            if (data.allowed) {
-              document.getElementById('msg').style.color = '#8ef08e';
-              document.getElementById('msg').innerText = '✅ Доступ разрешён. Окно закроется...';
-            } else {
-              document.getElementById('msg').innerText = '⛔ Доступ запрещён.';
-            }
-          } catch (err) {
-            document.getElementById('msg').innerText = 'Ошибка проверки. Попробуйте ещё раз.';
-            try { window.opener.postMessage({ type:'telegram-auth', result: { allowed:false, error:'network' } }, '*'); } catch(e){}
-          }
-          setTimeout(() => window.close(), 1500);
-        }
-      </script>
+  async function onTelegramAuth(user) {
+    try {
+      const r = await fetch('/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(user)
+      });
+      const data = await r.json();
+      // ✅ отправляем результат в родительский iframe
+      try {
+        window.parent.postMessage({ type: 'telegram-auth', result: data }, '*');
+      } catch(e){}
+      if (data.allowed) {
+        document.getElementById('msg').style.color = '#8ef08e';
+        document.getElementById('msg').innerText = '✅ Доступ разрешён';
+      } else {
+        document.getElementById('msg').innerText = '⛔ Доступ запрещён';
+      }
+    } catch (err) {
+      document.getElementById('msg').innerText = 'Ошибка проверки';
+      try {
+        window.parent.postMessage({ type:'telegram-auth', result: { allowed:false, error:'network' } }, '*');
+      } catch(e){}
+    }
+  }
+</script>
     </body>
     </html>
   `);
@@ -93,3 +95,4 @@ app.get("/", (req, res) => res.send("Telegram Auth API is running"));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("Server listening on " + PORT));
+
