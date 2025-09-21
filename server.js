@@ -9,7 +9,7 @@ app.use(express.json());
 // Ваш BOT_TOKEN должен быть установлен как переменная окружения на Render
 // const BOT_TOKEN = process.env.BOT_TOKEN; 
 // Для локального тестирования:
-const BOT_TOKEN = "ЗАМЕНИТЕ_НА_ВАШ_BOT_TOKEN_В_КАВЫЧКАХ";
+const BOT_TOKEN = "8494310534:AAFL9cs4ZFbrHJJufib0ywzZcSWvXTTb2cg";
 
 // WHITELIST должен быть установлен как переменная окружения
 // const WHITELIST = (process.env.WHITELIST || "").split(",");
@@ -54,3 +54,4 @@ app.get("/", (req, res) => res.send("Telegram Auth API is running"));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("Server listening on " + PORT));
+
