@@ -37,11 +37,13 @@
           msg.style.color = "#8ef08e";
           msg.innerText = "✅ Доступ разрешён. Перенаправление...";
 
-          // сохраняем флаг, что проверка пройдена
+          // сохраняем флаг
           localStorage.setItem("__aibm_auth_ok", "1");
 
-          // куда возвращаться
-          const back = sessionStorage.getItem("__aibm_return_url") || "https://moomoo.io";
+          // возвращаемся в игру
+          const back = sessionStorage.getItem("__aibm_return_url")
+                   || localStorage.getItem("__aibm_return_url")
+                   || "https://moomoo.io";
 
           setTimeout(() => { window.location.href = back; }, 1200);
         } else {
