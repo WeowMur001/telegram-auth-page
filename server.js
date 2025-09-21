@@ -28,18 +28,35 @@ app.post("/auth", (req, res) => {
   if (!data.hash) return res.status(400).json({ error: "no hash" });
 
   if (!checkTelegramAuth(data)) {
-    // Если подпись неверна, отправляем на страницу с ошибкой
-    return res.redirect('https://moomoo.io?auth=fail');
+    // Если подпись неверна, возвращаем HTML-страницу с редиректом
+    return res.send(`
+      <!DOCTYPE html>
+      <html><body>
+        <p>Доступ запрещён. Перенаправление...</p>
+        <script>
+          setTimeout(() => {
+            window.location.href = 'https://moomoo.io/?auth=fail';
+          }, 1000);
+        </script>
+      </body></html>
+    `);
   }
 
   const allowed = WHITELIST.includes(String(data.id));
-
-  // Перенаправляем на Moomoo.io с параметром успеха или неудачи
-  if (allowed) {
-    res.redirect('https://moomoo.io/?auth=success');
-  } else {
-    res.redirect('https://moomoo.io/?auth=fail');
-  }
+  
+  // Возвращаем HTML-страницу, которая перенаправит пользователя
+  const redirectUrl = allowed ? 'https://moomoo.io/?auth=success' : 'https://moomoo.io/?auth=fail';
+  res.send(`
+    <!DOCTYPE html>
+    <html><body>
+      <p>Проверка пройдена. Перенаправление...</p>
+      <script>
+        setTimeout(() => {
+          window.location.href = '${redirectUrl}';
+        }, 1000);
+      </script>
+    </body></html>
+  `);
 });
 
 // Страница логина
@@ -102,5 +119,6 @@ app.get("/", (req, res) => res.send("Telegram Auth API is running"));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("Server listening on " + PORT));
+
 
 
